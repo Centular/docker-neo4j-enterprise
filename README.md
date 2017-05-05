@@ -1,7 +1,8 @@
 
 Enviromental variables available
 
- NEO4J_dbms_mode
+NEO4J_AUTH=neo4j:password
+NEO4J_dbms_mode
 NEO4J_dbms_connectors_defaultAdvertisedAddress
 NEO4J_ha_serverId
 NEO4J_ha_host_data
