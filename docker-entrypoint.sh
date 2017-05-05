@@ -38,6 +38,7 @@ if [ "$1" == "neo4j" ]; then
         exit 1
     fi
 
+    setting "unsupported.dbms.edition=enterprise"
     setting "dbms.connectors.default_listen_address" "0.0.0.0"
     setting "dbms.connector.http.listen_address" "0.0.0.0:7474"
     setting "dbms.connector.https.listen_address" "0.0.0.0:7473"
@@ -53,6 +54,10 @@ if [ "$1" == "neo4j" ]; then
     setting "causal_clustering.discovery_advertised_address" "${NEO4J_causalClustering_discoveryAdvertisedAddress:-$(hostname):5000}"
     setting "causal_clustering.transaction_advertised_address" "${NEO4J_causalClustering_transactionAdvertisedAddress:-$(hostname):6000}"
     setting "causal_clustering.raft_advertised_address" "${NEO4J_causalClustering_raftAdvertisedAddress:-$(hostname):7000}"
+    setting "causal_clustering.raft_messages_log_enable" "${NEO4J_causalClustering_raftMessagesLogEnable}"
+    setting "causal_clustering.leader_election_timeout" "${NEO4J_causalClustering_leaderElectionTimeout}"
+
+
 
     [ -f "${EXTENSION_SCRIPT:-}" ] && . ${EXTENSION_SCRIPT}
 
