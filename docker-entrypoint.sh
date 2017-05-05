@@ -54,8 +54,8 @@ if [ "$1" == "neo4j" ]; then
     setting "causal_clustering.discovery_advertised_address" "$(hostname -f):5000"
     setting "causal_clustering.transaction_advertised_address" "$(hostname -f):6000"
     setting "causal_clustering.raft_advertised_address" "$(hostname -f):7000"
-    setting "causal_clustering.raft_messages_log_enable" "${NEO4J_causalClustering_raftMessagesLogEnable}"
-    setting "causal_clustering.leader_election_timeout" "${NEO4J_causalClustering_leaderElectionTimeout}"
+    setting "causal_clustering.raft_messages_log_enable" "${NEO4J_causalClustering_raftMessagesLogEnable:-}"
+    setting "causal_clustering.leader_election_timeout" "${NEO4J_causalClustering_leaderElectionTimeout:-"
 
 
 
