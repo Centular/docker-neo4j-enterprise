@@ -2,6 +2,7 @@
 
 setting() {
     setting="${1}"
+    echo "setting: $setting"
     value="${2}"
     file="neo4j.conf"
 
