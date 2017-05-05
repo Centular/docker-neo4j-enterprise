@@ -1,0 +1,11 @@
+
+Enviromental variables available
+
+ NEO4J_dbms_mode
+NEO4J_dbms_connectors_defaultAdvertisedAddress
+NEO4J_ha_serverId
+NEO4J_ha_host_data
+NEO4J_ha_host_coordination
+NEO4J_ha_initialHosts
+NEO4J_causalClustering_expectedCoreClusterSize:
+NEO4J_causalClustering_initialDiscoveryMembers:
