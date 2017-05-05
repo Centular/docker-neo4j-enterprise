@@ -39,7 +39,7 @@ if [ "$1" == "neo4j" ]; then
         exit 1
     fi
 
-    setting "unsupported.dbms.edition=enterprise"
+    setting "unsupported.dbms.edition" "enterprise"
     setting "dbms.connectors.default_listen_address" "0.0.0.0"
     setting "dbms.connector.http.listen_address" "0.0.0.0:7474"
     setting "dbms.connector.https.listen_address" "0.0.0.0:7473"
