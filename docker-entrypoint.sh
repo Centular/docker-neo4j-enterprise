@@ -1,25 +1,5 @@
 #!/bin/bash -eu
 
-setting() {
-    setting="${1}"
-    value="${2}"
-    file="${3:-neo4j.conf}"
-
-    if [ ! -f "conf/${file}" ]; then
-        if [ -f "conf/neo4j.conf" ]; then
-            file="neo4j.conf"
-        fi
-    fi
-
-    if [ -n "${value}" ]; then
-        if grep --quiet --fixed-strings "${setting}=" conf/"${file}"; then
-            sed --in-place "s|.*${setting}=.*|${setting}=${value}|" conf/"${file}"
-        else
-            echo "${setting}=${value}" >>conf/"${file}"
-        fi
-    fi
-}
-
 if [ "$1" == "neo4j" ]; then
 
     # Env variable naming convention:
@@ -34,16 +14,26 @@ if [ "$1" == "neo4j" ]; then
     # Set some to default values if unset
     : ${NEO4J_dbms_tx__log_rotation_retention__policy:=${NEO4J_dbms_txLog_rotation_retentionPolicy:-"100M size"}}
     : ${NEO4J_wrapper_java_additional:=${NEO4J_UDC_SOURCE:-"-Dneo4j.ext.udc.source=docker"}}
-    : ${NEO4J_dbms_memory_heap_initial__size:=${NEO4J_dbms_memory_heap_maxSize:-"512"}}
-    : ${NEO4J_dbms_memory_heap_max__size:=${NEO4J_dbms_memory_heap_maxSize:-"512"}}
+    : ${NEO4J_dbms_memory_heap_initial__size:=${NEO4J_dbms_memory_heap_maxSize:-"512M"}}
+    : ${NEO4J_dbms_memory_heap_max__size:=${NEO4J_dbms_memory_heap_maxSize:-"512M"}}
     : ${NEO4J_dbms_unmanaged__extension__classes:=${NEO4J_dbms_unmanagedExtensionClasses:-}}
     : ${NEO4J_dbms_allow__format__migration:=${NEO4J_dbms_allowFormatMigration:-}}
+    : ${NEO4J_dbms_connectors_default__advertised__address:=${NEO4J_dbms_connectors_defaultAdvertisedAddress:-}}
     : ${NEO4J_ha_server__id:=${NEO4J_ha_serverId:-}}
     : ${NEO4J_ha_initial__hosts:=${NEO4J_ha_initialHosts:-}}
+    : ${NEO4J_causal__clustering_expected__core__cluster__size:=${NEO4J_causalClustering_expectedCoreClusterSize:-}}
+    : ${NEO4J_causal__clustering_initial__discovery__members:=${NEO4J_causalClustering_initialDiscoveryMembers:-}}
+    : ${NEO4J_causal__clustering_discovery__listen__address:=${NEO4J_causalClustering_discoveryListenAddress:-"0.0.0.0:5000"}}
+    : ${NEO4J_causal__clustering_discovery__advertised__address:=${NEO4J_causalClustering_discoveryAdvertisedAddress:-"$(hostname):5000"}}
+    : ${NEO4J_causal__clustering_transaction__listen__address:=${NEO4J_causalClustering_transactionListenAddress:-"0.0.0.0:6000"}}
+    : ${NEO4J_causal__clustering_transaction__advertised__address:=${NEO4J_causalClustering_transactionAdvertisedAddress:-"$(hostname):6000"}}
+    : ${NEO4J_causal__clustering_raft__listen__address:=${NEO4J_causalClustering_raftListenAddress:-"0.0.0.0:7000"}}
+    : ${NEO4J_causal__clustering_raft__advertised__address:=${NEO4J_causalClustering_raftAdvertisedAddress:-"$(hostname):7000"}}
 
-    : ${NEO4J_dbms_connector_http_address:="0.0.0.0:7474"}
-    : ${NEO4J_dbms_connector_https_address:="0.0.0.0:7473"}
-    : ${NEO4J_dbms_connector_bolt_address:="0.0.0.0:7687"}
+    : ${NEO4J_dbms_connectors_default__listen__address:="0.0.0.0"}
+    : ${NEO4J_dbms_connector_http_listen__address:="0.0.0.0:7474"}
+    : ${NEO4J_dbms_connector_https_listen__address:="0.0.0.0:7473"}
+    : ${NEO4J_dbms_connector_bolt_listen__address:="0.0.0.0:7687"}
     : ${NEO4J_ha_host_coordination:="$(hostname):5001"}
     : ${NEO4J_ha_host_data:="$(hostname):6001"}
 
@@ -51,7 +41,15 @@ if [ "$1" == "neo4j" ]; then
     unset NEO4J_dbms_txLog_rotation_retentionPolicy NEO4J_UDC_SOURCE \
         NEO4J_dbms_memory_heap_maxSize NEO4J_dbms_memory_heap_maxSize \
         NEO4J_dbms_unmanagedExtensionClasses NEO4J_dbms_allowFormatMigration \
-        NEO4J_ha_initialHosts
+        NEO4J_dbms_connectors_defaultAdvertisedAddress NEO4J_ha_serverId \
+        NEO4J_ha_initialHosts NEO4J_causalClustering_expectedCoreClusterSize \
+        NEO4J_causalClustering_initialDiscoveryMembers \
+        NEO4J_causalClustering_discoveryListenAddress \
+        NEO4J_causalClustering_discoveryAdvertisedAddress \
+        NEO4J_causalClustering_transactionListenAddress \
+        NEO4J_causalClustering_transactionAdvertisedAddress \
+        NEO4J_causalClustering_raftListenAddress \
+        NEO4J_causalClustering_raftAdvertisedAddress
 
     if [ -d /conf ]; then
         find /conf -type f -exec cp {} conf \;
@@ -85,37 +83,8 @@ if [ "$1" == "neo4j" ]; then
             echo "Invalid value for password. It cannot be 'neo4j', which is the default."
             exit 1
         fi
-
-        setting "dbms.connector.http.address" "127.0.0.1:7474"
-        setting "dbms.connector.https.address" "127.0.0.1:7473"
-        setting "dbms.connector.bolt.address" "127.0.0.1:7687"
-        bin/neo4j start || \
-            (cat logs/neo4j.log && echo "Neo4j failed to start for password change" && exit 1)
-
-        end="$((SECONDS+100))"
-        while true; do
-            http_code="$(curl --silent --write-out %{http_code} --user "neo4j:${password}" --output /dev/null http://localhost:7474/db/data/ || true)"
-
-            if [[ "${http_code}" = "200" ]]; then
-                break;
-            fi
-
-            if [[ "${http_code}" = "401" ]]; then
-                curl --fail --silent --show-error --user neo4j:neo4j \
-                     --data '{"password": "'"${password}"'"}' \
-                     --header 'Content-Type: application/json' \
-                     http://localhost:7474/user/neo4j/password
-                break;
-            fi
-
-            if [[ "${SECONDS}" -ge "${end}" ]]; then
-                (cat logs/neo4j.log && echo "Neo4j failed to start" && exit 1)
-            fi
-
-            sleep 1
-        done
-
-        bin/neo4j stop
+        # Will exit with error if users already exist (and print a message explaining that)
+        bin/neo4j-admin set-initial-password "${password}" || true
     elif [ -n "${NEO4J_AUTH:-}" ]; then
         echo "Invalid value for NEO4J_AUTH: '${NEO4J_AUTH}'"
         exit 1
